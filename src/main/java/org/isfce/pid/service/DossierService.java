@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,17 +39,21 @@ import org.isfce.pid.model.TypeDocument;
 import org.isfce.pid.model.UE;
 import org.isfce.pid.model.User;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
+@Slf4j
 public class DossierService {
 
-	private static final Path RACINE_UPLOAD = Paths.get(System.getProperty("user.home"), "PID_DB", "uploads")
-			.toAbsolutePath()
-			.normalize();
+	@Value("${pid.documents.upload-root:${user.home}/PID_DB/uploads}")
+	private String racineUpload;
 
 	private static final String ERR_COURS_REUTILISE =
 			"Un meme cours reussi ne peut pas justifier plusieurs demandes UE";
@@ -536,41 +539,88 @@ public class DossierService {
 			throw new DossierException("Aucun fichier transmis");
 		}
 
-		Path dossierDeDepot = RACINE_UPLOAD.resolve("dossier-" + dossier.getId()).normalize();
+		Path dossierDeDepot = dossierDeDepot(dossier);
 		Files.createDirectories(dossierDeDepot);
+		if (Files.isSymbolicLink(dossierDeDepot)) {
+			throw new IOException("Repertoire de stockage invalide");
+		}
 
 		String nomFichierOriginal = fichier.getOriginalFilename();
 		String nomFichierNettoye = nettoyerNomFichierTeleverse(
 				nomFichierOriginal == null || nomFichierOriginal.isBlank() ? "document" : nomFichierOriginal);
-		String nomFichierStocke = dossier.getId() + "_" + UUID.randomUUID() + "_" + nomFichierNettoye;
-		Path fichierCible = dossierDeDepot.resolve(nomFichierStocke).normalize();
-
-		if (!fichierCible.startsWith(RACINE_UPLOAD)) {
-			throw new IOException("Chemin de stockage invalide");
-		}
-
+		String cleStockage = UUID.randomUUID().toString();
+		Path fichierCible = dossierDeDepot.resolve(cleStockage);
 		try (InputStream fluxFichier = fichier.getInputStream()) {
-			Files.copy(fluxFichier, fichierCible, StandardCopyOption.REPLACE_EXISTING);
+			Files.copy(fluxFichier, fichierCible);
+		} catch (IOException e) {
+			if (!(e instanceof java.nio.file.FileAlreadyExistsException)) {
+				nettoyerFichier(fichierCible);
+			}
+			throw e;
 		}
 
-		return addDocument(dossier, nomFichierNettoye, typeDocument, fichierCible.toString(), null, coursReussi);
+		Document document = Document.builder()
+				.dossier(dossier)
+				.nomFichier(nomFichierNettoye)
+				.typeDocument(typeDocument)
+				.cleStockage(cleStockage)
+				.coursReussi(coursReussi)
+				.build();
+		try {
+			Document sauvegarde = documentDao.saveAndFlush(document);
+			if (TransactionSynchronizationManager.isSynchronizationActive()) {
+				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+					@Override
+					public void afterCompletion(int status) {
+						if (status == STATUS_ROLLED_BACK) {
+							nettoyerFichier(fichierCible);
+						}
+					}
+				});
+			}
+			return sauvegarde;
+		} catch (RuntimeException e) {
+			nettoyerFichier(fichierCible);
+			throw e;
+		}
 	}
 
 	public void supprimerDocument(Long documentId) {
 		Document document = documentDao.findById(documentId).orElse(null);
 
-		if (document != null && document.getCheminFichier() != null && !document.getCheminFichier().isBlank()) {
-			Path cheminStocke = Paths.get(document.getCheminFichier()).toAbsolutePath().normalize();
-			if (cheminStocke.startsWith(RACINE_UPLOAD)) {
-				try {
-					Files.deleteIfExists(cheminStocke);
-				} catch (IOException exceptionIgnoree) {
-					// On prefere garder la suppression en base meme si le disque ne se nettoie pas.
-				}
-			}
+		if (document == null) {
+			return;
 		}
-
 		documentDao.deleteById(documentId);
+		String cle = document.getCleStockage();
+		if (cle == null || !cle.matches("[0-9a-f-]{36}")) {
+			return;
+		}
+		Path fichier = dossierDeDepot(document.getDossier()).resolve(cle);
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					nettoyerFichier(fichier);
+				}
+			});
+		} else {
+			nettoyerFichier(fichier);
+		}
+	}
+
+	private Path dossierDeDepot(Dossier dossier) {
+		return Paths.get(racineUpload).toAbsolutePath().normalize().resolve("dossier-" + dossier.getId());
+	}
+
+	private void nettoyerFichier(Path fichier) {
+		try {
+			if (!Files.isSymbolicLink(fichier.getParent())) {
+				Files.deleteIfExists(fichier);
+			}
+		} catch (IOException e) {
+			log.warn("A managed document file needs storage reconciliation");
+		}
 	}
 
 	public Optional<Document> getDocumentById(Long id) {
@@ -787,7 +837,8 @@ public class DossierService {
 			if (document.getCoursReussi() == null || !document.getCoursReussi().getId().equals(cours.getId())) {
 				continue;
 			}
-			if (!estVide(document.getCheminFichier()) || !estVide(document.getUrlDocument())) {
+			if (document.getCleStockage() != null || !estVide(document.getCheminFichier())
+					|| !estVide(document.getUrlDocument())) {
 				return true;
 			}
 		}

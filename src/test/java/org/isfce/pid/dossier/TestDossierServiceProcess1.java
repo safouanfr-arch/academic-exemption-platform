@@ -358,6 +358,24 @@ class TestDossierServiceProcess1 {
 	}
 
 	@Test
+	void verifiesDocumentOwnershipAndNestedDossierAccess() throws Exception {
+		Dossier owner = createDossierAvecSection("owner_document", "INFO");
+		Dossier other = createDossierAvecSection("other_document", "INFO");
+		Document document = dossierService.addDocument(other, "attachment.txt", TypeDocument.BULLETIN,
+				"notes/attachment.txt", null, null);
+		var asOwner = authentication(tokenFor(owner.getUser().getUsername()));
+		var asOther = authentication(tokenFor(other.getUser().getUsername()));
+
+		mockMvc.perform(get("/api/dossier/{id}/documents", other.getId()).with(asOwner))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(delete("/api/dossier/{id}/documents/{documentId}", owner.getId(), document.getId())
+				.with(asOwner)).andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/dossier/{id}/documents", other.getId()).with(asOther))
+				.andExpect(status().isOk()).andExpect(jsonPath("$[0].nomFichier").value("attachment.txt"));
+		assertTrue(dossierService.getDocumentById(document.getId()).isPresent());
+	}
+
+	@Test
 	void linkCoursToDemandeUE_refuseSousRessourcesDAutreDossier() throws Exception {
 		User owner = createDedicatedUser("owner_link");
 		Dossier dossierOwner = dossierService.createDossier(owner, "Demande owner", getSection("INFO"));

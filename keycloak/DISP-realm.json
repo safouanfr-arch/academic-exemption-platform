@@ -1,0 +1,73 @@
+{
+  "realm": "DISP",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      {"name": "ETUDIANT"},
+      {"name": "ADMIN"}
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "etu-app",
+      "name": "Academic Exemption demo SPA",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/",
+        "http://localhost:4200/silent-check-sso.html"
+      ],
+      "webOrigins": ["http://localhost:4200"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/"
+      },
+      "protocolMappers": [
+        {
+          "name": "dispense-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "dispense-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "et1",
+      "firstName": "Demo",
+      "lastName": "Student",
+      "email": "et1@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": ["ETUDIANT"],
+      "clientRoles": {
+        "account": ["view-profile"]
+      }
+    },
+    {
+      "username": "et2",
+      "firstName": "Second",
+      "lastName": "Student",
+      "email": "et2@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": ["ETUDIANT"],
+      "clientRoles": {
+        "account": ["view-profile"]
+      }
+    }
+  ]
+}
