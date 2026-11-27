@@ -1,0 +1,20 @@
+<button
+  matBadge="{{ dossierCounts().enCours }}"
+  (click)="goToOpenDossiers()"
+  class="badge-stat"
+  matBadgeSize="medium"
+  matBadgeColor="accent"
+  matBadgeOverlap="true"
+  mat-raised-button>
+  Non cloture
+</button>
+<button
+  matBadge="{{ dossierCounts().traite }}"
+  (click)="goToClosedDossiers()"
+  class="badge-stat"
+  matBadgeSize="medium"
+  matBadgeColor="accent"
+  matBadgeOverlap="true"
+  mat-flat-button>
+  Cloture
+</button>

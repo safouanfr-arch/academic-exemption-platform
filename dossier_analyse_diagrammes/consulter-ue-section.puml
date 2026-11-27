@@ -1,0 +1,144 @@
+﻿@startuml
+' Diagramme d'activite - Consulter les UE d'une section
+' Version mise a jour apres modifications du projet
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+  DiamondBackgroundColor #F7FBFF
+  DiamondBorderColor #3A7BD5
+  StartColor #1B1B1F
+  EndColor #1B1B1F
+}
+skinparam note {
+  BackgroundColor #FFF6D7
+  BorderColor #D9B44A
+  FontColor #1B1B1F
+}
+skinparam partition {
+  BackgroundColor #EEF7FF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+}
+
+title Diagramme d'activite - Consulter les UE d'une section
+
+start
+
+partition "Etudiant" {
+  :Acceder a la consultation des UE;
+}
+
+partition "Systeme" {
+  :Afficher la page de consultation;
+  :Charger les sections disponibles;
+  note right
+    Source : TSECTION
+  end note
+
+  if (Chargement reussi ?) then (Oui)
+  else (Non)
+    #LightCoral:Journaliser l'erreur de chargement;
+    note right
+      3A1 - consultation non initialisee
+    end note
+    stop
+  endif
+
+  if (Au moins une section disponible ?) then (Oui)
+    :Selectionner la premiere section par defaut;
+  else (Non)
+    #FFF2B2:La consultation ne peut pas etre initialisee;
+    note right
+      4A1 - aucune section disponible
+    end note
+    stop
+  endif
+
+  :Charger les UE de la section courante;
+  note right
+    Source : TUE filtrees par TSEC_UE
+  end note
+}
+
+repeat
+  partition "Systeme" {
+    if (La section contient des UE ?) then (Oui)
+      :Afficher la liste des UE;
+    else (Non)
+      #FFF2B2:Afficher "Aucune UE disponible pour cette section";
+      note right
+        5A1 / 10A2
+      end note
+    endif
+  }
+
+  partition "Etudiant" {
+    if (UE selectionnee ?) then (Oui)
+      :Selectionner une UE dans la liste;
+    else (Non)
+      note right
+        7A1 - liste conservee telle quelle
+      end note
+    endif
+  }
+
+  partition "Systeme" {
+    if (UE selectionnee ?) then (Oui)
+      :Charger le detail complet de l'UE selectionnee;
+      note right
+        Source : TUE + TACQUIS
+      end note
+
+      if (Chargement du detail reussi ?) then (Oui)
+        :Afficher le detail, la description et les acquis;
+      else (Non)
+        #LightCoral:Afficher "Impossible de charger les details de cette UE";
+      endif
+    endif
+  }
+
+  partition "Etudiant" {
+    :Consulter les informations de l'UE;
+
+    if (Changer de section ?) then (Oui)
+      :Choisir une autre section;
+    else (Non)
+    endif
+  }
+
+  partition "Systeme" {
+    if (Changer de section ?) then (Oui)
+      :Charger ou recuperer depuis le cache les UE de la section selectionnee;
+      note right
+        Source : cache front ou TUE filtrees par TSEC_UE
+      end note
+
+      if (Rechargement reussi ?) then (Oui)
+        :Mettre a jour la liste des UE;
+      else (Non)
+        #LightCoral:Journaliser l'erreur de chargement;
+        note right
+          11A1 - liste non mise a jour
+        end note
+      endif
+    endif
+  }
+repeat while (Continuer la consultation ?) is (Oui)
+
+partition "Etudiant" {
+  :Quitter la consultation;
+}
+
+stop
+
+legend right
+  |= Couleur |= Signification |
+  | Rouge | Erreur technique |
+  | Jaune | Contenu vide / avertissement |
+  | Blanc | Action normale |
+endlegend
+
+@enduml

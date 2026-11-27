@@ -1,0 +1,787 @@
+<section class="workspace">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">ISFCE · Espace etudiant</p>
+      <h1>Completer votre dossier de dispense</h1>
+      <p class="subtitle">
+        Suivez les etapes dans l ordre : section, cours, correspondances, demandes UE, documents puis soumission.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <a mat-stroked-button routerLink="/home">
+        <mat-icon>arrow_back</mat-icon>
+        Retour a l accueil
+      </a>
+      @if (dossier(); as currentDossier) {
+        <span class="status-chip">{{ etatLabels[currentDossier.etat] || currentDossier.etat }}</span>
+      }
+    </div>
+  </div>
+
+  @if (errorMessage()) {
+    <mat-card class="message-card error-card">
+      <mat-card-content>{{ errorMessage() }}</mat-card-content>
+    </mat-card>
+  }
+
+  @if (successMessage()) {
+    <mat-card class="message-card success-card">
+      <mat-card-content>{{ successMessage() }}</mat-card-content>
+    </mat-card>
+  }
+
+  @if (loading()) {
+    <mat-card>
+      <mat-card-content>Chargement du dossier...</mat-card-content>
+    </mat-card>
+  } @else if (dossier(); as currentDossier) {
+    <mat-card class="overview-card">
+      <mat-card-content class="overview-grid">
+        <div class="overview-main">
+          <p class="eyebrow">Dossier #{{ currentDossier.id }}</p>
+          <h2>{{ currentDossier.objetDemande }}</h2>
+          <div class="overview-details">
+            <p><strong>Date :</strong> {{ currentDossier.date | date:'dd/MM/yyyy' }}</p>
+            <p><strong>Etat :</strong> {{ etatLabels[currentDossier.etat] || currentDossier.etat }}</p>
+            <p><strong>Section :</strong> {{ currentDossier.section?.nom || 'Aucune section enregistree' }}</p>
+          </div>
+          <p class="helper-text">{{ getStatusMessage() }}</p>
+          @if (isEditable()) {
+            <p class="helper-text">Chaque action est enregistree automatiquement. Ton dossier reste en brouillon tant qu il n est pas soumis.</p>
+          }
+
+          @if (!isEditable()) {
+            <p class="readonly-note">
+              Le dossier est en lecture seule. Les actions d edition et de soumission sont desactivees.
+            </p>
+          }
+        </div>
+
+        <div class="overview-side">
+          <p class="subheading">Prochaine action</p>
+          <p class="next-step-message">{{ getNextStepMessage() }}</p>
+
+          <div class="inline-actions">
+            <button
+              mat-stroked-button
+              (click)="refreshValidation()"
+              [disabled]="saving()">
+              Revalider
+            </button>
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="submitDossier()"
+              [disabled]="!canSubmit()">
+              {{ getSubmitLabel() }}
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-accordion class="workflow-accordion" multi>
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandSectionStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">1</span>
+            <span>Choisir la section</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ hasSavedSection() && !hasPendingSectionChange() ? 'Pret' : 'A completer' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">Commencez par selectionner la section a laquelle votre demande de dispense se rattache.</p>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Section</mat-label>
+            <mat-select
+              [ngModel]="selectedSectionCode()"
+              (ngModelChange)="setSelectedSectionCode($event)"
+              [disabled]="!isEditable() || saving()">
+              <mat-option [value]="''">Aucune section</mat-option>
+              @for (section of sections(); track section.code) {
+                <mat-option [value]="section.code">{{ section.nom }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (hasPendingSectionChange()) {
+            <p class="helper-text">
+              Pense a enregistrer la section pour mettre a jour les UE et les correspondances proposees.
+            </p>
+          }
+
+          <div class="inline-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="saveSection()"
+              [disabled]="!isEditable() || !hasPendingSectionChange() || saving() || !selectedSectionCode()">
+              Enregistrer la section
+            </button>
+          </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandCoursStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">2</span>
+            <span>Ajouter les cours reussis</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ hasCoursReussis() ? coursReussis().length + ' cours' : 'A completer' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">
+          Utilisez les listes proposees quand l ecole et le cours existent deja. Pour un cours inconnu, l UE cible et une URL ou un PDF de programme sont obligatoires.
+        </p>
+
+          <div class="list-block">
+            @if (coursReussis().length === 0) {
+              <p>Aucun cours reussi encode pour ce dossier.</p>
+            } @else {
+              @for (cours of coursReussis(); track cours.id) {
+                <div class="list-row">
+                  <div>
+                    <p class="row-title">{{ cours.code }} - {{ cours.nom }}</p>
+                    <p class="row-meta">
+                      {{ cours.etablissementNom }} - {{ cours.ects }} ECTS
+                      @if (cours.note) { - Note: {{ cours.note }} }
+                    </p>
+                    @if (cours.prgm || cours.lienProgramme) {
+                      <p class="row-meta">
+                        @if (cours.prgm) { Programme: {{ cours.prgm }} }
+                        @if (cours.prgm && cours.lienProgramme) { - }
+                        @if (cours.lienProgramme) { Lien: {{ cours.lienProgramme }} }
+                      </p>
+                    }
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="warn"
+                    (click)="deleteCoursReussi(cours.id)"
+                    [disabled]="!isEditable() || saving() || isCoursLinked(cours.id)">
+                    Supprimer
+                  </button>
+                </div>
+                @if (isCoursLinked(cours.id)) {
+                  <p class="helper-text">
+                    Ce cours est deja lie a une demande UE. Delie-le d abord avant suppression.
+                  </p>
+                }
+              }
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="mode-switches">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="useGuidedEtablissementMode()"
+              [disabled]="!isEditable() || saving() || isGuidedEtablissementMode()">
+              Choisir une ecole connue
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="useManualEtablissementMode()"
+              [disabled]="!isEditable() || saving() || manualEtablissementMode()">
+              Mon ecole n est pas dans la liste
+            </button>
+          </div>
+
+          <form class="form-grid" [formGroup]="coursForm">
+            @if (isGuidedEtablissementMode()) {
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Ecole d origine</mat-label>
+                <mat-select
+                  [value]="selectedEtablissementId()"
+                  (selectionChange)="setSelectedEtablissementId($event.value)"
+                  [disabled]="!isEditable() || saving()">
+                  <mat-option [value]="null">Choisir un etablissement</mat-option>
+                  @for (etablissement of etablissements(); track etablissement.id) {
+                    <mat-option [value]="etablissement.id">
+                      {{ etablissement.nom }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (selectedEtablissementId() !== null) {
+                <div class="inline-actions span-2 compact-switches">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="useGuidedCourseMode()"
+                    [disabled]="!isEditable() || saving() || isGuidedCourseMode()">
+                    Choisir un cours connu
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="useManualCourseMode()"
+                    [disabled]="!isEditable() || saving() || manualCoursMode()">
+                    Mon cours n est pas dans la liste
+                  </button>
+                </div>
+              }
+
+              @if (selectedEtablissementId() !== null && coursConnus().length > 0 && isGuidedCourseMode()) {
+                <mat-form-field appearance="outline" class="span-2">
+                  <mat-label>Cours connu dans cet etablissement</mat-label>
+                  <mat-select
+                    [value]="selectedCoursConnuId()"
+                    (selectionChange)="setSelectedCoursConnuId($event.value)"
+                    [disabled]="!isEditable() || saving()">
+                    <mat-option [value]="null">Choisir un cours</mat-option>
+                    @for (cours of coursConnus(); track cours.id) {
+                      <mat-option [value]="cours.id">
+                        {{ cours.code }} - {{ cours.nom }} ({{ cours.ects }} ECTS)
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              } @else if (selectedEtablissementId() !== null && coursConnus().length === 0) {
+                <p class="helper-text span-2">
+                  Aucun cours de reference n est encore connu pour cet etablissement. Tu peux poursuivre en saisie libre.
+                </p>
+              }
+            } @else {
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Etablissement non repertorie</mat-label>
+                <input matInput formControlName="etablissementNom">
+                <mat-hint>Ce nom restera dans ton dossier et ne sera pas ajoute a la liste des ecoles de reference.</mat-hint>
+              </mat-form-field>
+            }
+
+            @if (isGuidedCourseMode()) {
+              @if (getSelectedKnownCourse(); as coursConnu) {
+                <div class="known-course-preview span-2">
+                  <p class="row-title">{{ coursConnu.code }} - {{ coursConnu.nom }}</p>
+                  <p class="row-meta">{{ coursConnu.ects }} ECTS</p>
+                  <p class="row-meta">Les informations de ce cours sont deja connues par l application. Tu ne dois pas ressaisir le code, le nom ni les ECTS.</p>
+                </div>
+              }
+            }
+
+            @if (manualEtablissementMode() || manualCoursMode()) {
+              <mat-form-field appearance="outline">
+                <mat-label>Code du cours</mat-label>
+                <input matInput formControlName="code">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Nom du cours</mat-label>
+                <input matInput formControlName="nom">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>ECTS</mat-label>
+                <input matInput type="number" formControlName="ects">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>UE ISFCE associee</mat-label>
+                <mat-select formControlName="ueCodeAssocie" [disabled]="!isEditable() || saving() || !hasSavedSection()">
+                  @for (ue of getAssociableUes(); track ue.code) {
+                    <mat-option [value]="ue.code">{{ ue.code }} - {{ ue.nom }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>Le cours inconnu doit etre rattache directement a l UE qu il justifie.</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>URL du programme</mat-label>
+                <input matInput formControlName="lienProgramme">
+                <mat-hint>Ajoute une URL si le programme est en ligne, ou televerse le PDF ci-dessous.</mat-hint>
+              </mat-form-field>
+
+              <div class="file-picker span-2">
+                <label class="subheading" for="course-program-upload">Programme PDF du cours</label>
+                <input
+                  id="course-program-upload"
+                  type="file"
+                  (change)="onCourseProgramFileSelected($event)"
+                  [disabled]="!isEditable() || saving()"
+                  accept=".pdf">
+                @if (getSelectedCourseProgramFileName()) {
+                  <p class="row-meta">Fichier selectionne : {{ getSelectedCourseProgramFileName() }}</p>
+                } @else {
+                  <p class="row-meta">Televerse le PDF si le programme n est pas disponible via une URL.</p>
+                }
+              </div>
+            }
+
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Note obtenue /20</mat-label>
+              <input matInput type="number" min="10" max="20" step="0.5" formControlName="note" placeholder="Ex. 14">
+              <mat-hint>La note doit etre comprise entre 10 et 20.</mat-hint>
+            </mat-form-field>
+          </form>
+
+          <div class="inline-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="addCoursReussi()"
+              [disabled]="!isEditable() || saving()">
+              Ajouter le cours
+            </button>
+          </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandCorrespondanceStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">3</span>
+            <span>Verifier les dispenses detectees</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ getSuggestedUeCount() > 0 ? getSuggestedUeCount() + ' UE suggeree(s)' : 'A verifier' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">
+          Une fois la section enregistree et les cours ajoutes, l application peut suggerer des correspondances connues.
+        </p>
+
+          @if (!hasSavedSection()) {
+            <p class="helper-text">Enregistre d abord la section pour lancer la detection des correspondances connues.</p>
+          } @else if (hasPendingSectionChange()) {
+            <p class="helper-text">Enregistre la nouvelle section avant de consulter les correspondances connues.</p>
+          } @else if (!hasCoursReussis()) {
+            <p class="helper-text">Ajoute d abord au moins un cours reussi pour obtenir des suggestions.</p>
+          } @else if (correspondances().length === 0) {
+            <p>Aucune correspondance connue applicable pour le moment.</p>
+          } @else {
+            <div class="list-block compact-list">
+              @for (correspondance of correspondances(); track correspondance.coursReussiId + '-' + correspondance.ueCode) {
+                <div class="list-row">
+                  <div>
+                    <p class="row-title">{{ correspondance.ueCode }} - {{ correspondance.ueNom }}</p>
+                    <p class="row-meta">
+                      {{ correspondance.coursCode }} - {{ correspondance.coursNom }} - {{ correspondance.etablissementNom }}
+                    </p>
+                    <p class="row-meta">
+                      {{ typeCorrespondanceLabels[correspondance.typeCorrespondance] || correspondance.typeCorrespondance }}
+                    </p>
+                    @if (correspondance.commentaire) {
+                      <p class="row-meta">{{ correspondance.commentaire }}</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="inline-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="appliquerCorrespondancesConnues()"
+              [disabled]="!peutSynchroniserCorrespondances() || saving()">
+              Synchroniser les dispenses connues
+            </button>
+          </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandDemandesStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">4</span>
+            <span>Completer les demandes UE</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ hasDemandes() ? demandes().length + ' demande(s)' : 'A completer' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">
+          Ajoutez les demandes manquantes et liez les cours justificatifs aux UE demandees.
+        </p>
+
+          <div class="readiness-grid compact-readiness-grid">
+            <div class="readiness-item" [class.ready]="hasDemandes()">
+              <p class="row-title">Demandes creees</p>
+              <p class="row-meta">{{ demandes().length }} demande(s)</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="getUnlinkedCoursesCount() === 0">
+              <p class="row-title">Cours encore non lies</p>
+              <p class="row-meta">{{ getUnlinkedCoursesCount() }} cours</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="getRemainingUeCount() === 0">
+              <p class="row-title">UE encore disponibles</p>
+              <p class="row-meta">{{ getRemainingUeCount() }} UE</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="getSuggestedUeCount() === 0">
+              <p class="row-title">UE suggerees</p>
+              <p class="row-meta">{{ getSuggestedUeCount() }} UE detectee(s)</p>
+            </div>
+          </div>
+
+          @if (!currentDossier.section) {
+            <p class="helper-text">Choisis et enregistre une section avant d ajouter des demandes UE.</p>
+          } @else if (hasPendingSectionChange()) {
+            <p class="helper-text">Enregistre d abord la nouvelle section avant d ajouter ou modifier les demandes UE.</p>
+          } @else if (getSuggestedUeCount() > 0) {
+            <p class="helper-text">
+              Des dispenses connues ont ete detectees. Tu peux commencer par la synchronisation automatique, puis completer manuellement si necessaire.
+            </p>
+          }
+
+          <div class="list-block">
+            @if (demandes().length === 0) {
+              <p>Aucune demande UE pour ce dossier.</p>
+            } @else {
+              @for (demande of demandes(); track demande.id) {
+                <div class="demande-card">
+                  <div class="demande-header">
+                    <div>
+                      <p class="row-title">{{ demande.ueCode }} - {{ demande.ueNom }}</p>
+                      <p class="row-meta">{{ demande.ueEcts }} ECTS</p>
+                      <span class="demande-status" [class.ready]="hasLinkedCourses(demande)">
+                        {{ getDemandeReadinessLabel(demande) }}
+                      </span>
+                      @if (demande.commentaire) {
+                        <p class="row-meta">Commentaire: {{ demande.commentaire }}</p>
+                      }
+                      <p class="row-meta">{{ getDemandeReadinessHint(demande) }}</p>
+                    </div>
+                    <button
+                      mat-stroked-button
+                      color="warn"
+                      (click)="deleteDemandeUe(demande.id)"
+                      [disabled]="!isEditable() || saving()">
+                      Supprimer
+                    </button>
+                  </div>
+
+                  <div class="linked-courses">
+                    <p class="subheading">Cours lies</p>
+                    @if (getLinkedCourses(demande).length === 0) {
+                      <p class="helper-text">Aucun cours lie a cette demande.</p>
+                    } @else {
+                      @for (cours of getLinkedCourses(demande); track cours.id) {
+                        <div class="linked-course-row">
+                          <span>{{ cours.code }} - {{ cours.nom }}</span>
+                          <button
+                            mat-button
+                            color="warn"
+                            (click)="unlinkCoursFromDemande(demande.id, cours.id)"
+                            [disabled]="!isEditable() || saving()">
+                            Delier
+                          </button>
+                        </div>
+                      }
+                    }
+                  </div>
+
+                  <div class="inline-actions">
+                    <mat-form-field appearance="outline" class="link-select">
+                      <mat-label>Lier un cours</mat-label>
+                      <mat-select
+                        [ngModel]="getSelectedLinkCourseId(demande.id)"
+                        (ngModelChange)="setLinkSelection(demande.id, $event)"
+                        [disabled]="!isEditable() || saving() || getUnlinkedCourses(demande).length === 0">
+                        @for (cours of getUnlinkedCourses(demande); track cours.id) {
+                          <mat-option [value]="cours.id">
+                            {{ cours.code }} - {{ cours.nom }}
+                          </mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      (click)="linkCoursToDemande(demande.id)"
+                      [disabled]="!isEditable() || saving() || !getSelectedLinkCourseId(demande.id)">
+                      Lier le cours
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <form class="form-grid" [formGroup]="demandeForm">
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>UE demandee</mat-label>
+              <mat-select formControlName="ueCode" [disabled]="!canCreateDemande() || saving()">
+                @for (ue of getRequestableUes(); track ue.code) {
+                  <mat-option [value]="ue.code">{{ ue.code }} - {{ ue.nom }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>Commentaire</mat-label>
+              <input matInput formControlName="commentaire">
+            </mat-form-field>
+          </form>
+
+          <div class="inline-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="addDemandeUe()"
+              [disabled]="!canCreateDemande() || saving()">
+              Ajouter la demande UE
+            </button>
+          </div>
+
+          @if (canCreateDemande() && getRequestableUes().length === 0) {
+            <p class="helper-text">
+              Toutes les UE disponibles pour cette section ont deja ete ajoutees dans le dossier.
+            </p>
+          }
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandDocumentsStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">5</span>
+            <span>Ajouter les documents justificatifs</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ hasDocuments() ? documents().length + ' document(s)' : 'A completer' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">
+          Televersez de preference un vrai fichier. Le mode reference reste disponible pour une URL ou un chemin externe.
+        </p>
+
+          <div class="list-block">
+            @if (documents().length === 0) {
+              <p>Aucun document justificatif pour ce dossier.</p>
+            } @else {
+              @for (document of documents(); track document.id) {
+                <div class="list-row">
+                  <div>
+                    <p class="row-title">{{ document.nomFichier }}</p>
+                    <p class="row-meta">
+                      {{ typeDocumentLabels[document.typeDocument!] || document.typeDocument }}
+                    </p>
+                    @if (document.cheminFichier) {
+                      <p class="row-meta">Chemin: {{ document.cheminFichier }}</p>
+                    }
+                    @if (document.urlDocument) {
+                      <p class="row-meta">URL: {{ document.urlDocument }}</p>
+                    }
+                    @if (document.coursReussiId) {
+                      <p class="row-meta">Cours associe: {{ getCoursLabelById(document.coursReussiId) }}</p>
+                    }
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="warn"
+                    (click)="deleteDocument(document.id)"
+                    [disabled]="!canManageDocuments() || saving()">
+                    Supprimer
+                  </button>
+                </div>
+              }
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="mode-switches">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="setDocumentMode('upload')"
+              [disabled]="!canManageDocuments() || saving() || documentMode() === 'upload'">
+              Televerser un fichier
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="setDocumentMode('reference')"
+              [disabled]="!canManageDocuments() || saving() || documentMode() === 'reference'">
+              Ajouter une reference
+            </button>
+          </div>
+
+          <form class="form-grid" [formGroup]="documentForm">
+            <mat-form-field appearance="outline">
+              <mat-label>Type de document</mat-label>
+              <mat-select formControlName="typeDocument" [disabled]="!canManageDocuments() || saving()">
+                @for (type of typeDocumentOptions; track type) {
+                  <mat-option [value]="type">{{ typeDocumentLabels[type] }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Cours associe</mat-label>
+              <mat-select formControlName="coursReussiId" [disabled]="!canManageDocuments() || saving()">
+                <mat-option [value]="null">Aucun</mat-option>
+                @for (cours of coursReussis(); track cours.id) {
+                  <mat-option [value]="cours.id">
+                    {{ cours.code }} - {{ cours.nom }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>Pour un bulletin global, laisse "Aucun". Sinon, associe le document au cours concerne.</mat-hint>
+            </mat-form-field>
+
+            @if (documentMode() === 'upload') {
+              <div class="file-picker span-2">
+                <label class="subheading" for="document-upload">Fichier justificatif</label>
+                <input
+                  id="document-upload"
+                  type="file"
+                  (change)="onDocumentFileSelected($event)"
+                  [disabled]="!canManageDocuments() || saving()"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                @if (getSelectedDocumentFileName()) {
+                  <p class="row-meta">Fichier selectionne : {{ getSelectedDocumentFileName() }}</p>
+                } @else {
+                  <p class="row-meta">Formats usuels acceptes : PDF, image, document Office.</p>
+                }
+              </div>
+            } @else {
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Nom du fichier</mat-label>
+                <input matInput formControlName="nomFichier">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>Chemin de reference</mat-label>
+                <input matInput formControlName="cheminFichier">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="span-2">
+                <mat-label>URL de reference</mat-label>
+                <input matInput formControlName="urlDocument">
+              </mat-form-field>
+            }
+          </form>
+
+          <div class="inline-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="addDocument()"
+              [disabled]="!canManageDocuments() || saving()">
+              @if (documentMode() === 'upload') {
+                Televerser le fichier
+              } @else {
+                Ajouter la reference
+              }
+            </button>
+          </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel class="workflow-panel" [expanded]="shouldExpandValidationStep()">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="step-index">6</span>
+            <span>Verifier puis soumettre</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ validation()?.complet ? 'Pret a etre envoye' : 'A verifier' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <p class="panel-intro">Avant l envoi, controlez les erreurs bloquantes et les avertissements du dossier.</p>
+
+          <div class="readiness-grid">
+            <div class="readiness-item" [class.ready]="hasSavedSection() && !hasPendingSectionChange()">
+              <p class="row-title">Section enregistree</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(hasSavedSection() && !hasPendingSectionChange()) }}</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="hasCoursReussis()">
+              <p class="row-title">Cours reussis</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(hasCoursReussis()) }}</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="hasDemandes()">
+              <p class="row-title">Demandes UE</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(hasDemandes()) }}</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="hasLettreMotivation()">
+              <p class="row-title">Lettre de motivation</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(hasLettreMotivation()) }}</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="hasBulletinsPourCoursJustificatifs()">
+              <p class="row-title">Bulletins des cours</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(hasBulletinsPourCoursJustificatifs()) }}</p>
+            </div>
+
+            <div class="readiness-item" [class.ready]="validation()?.complet === true">
+              <p class="row-title">Validation finale</p>
+              <p class="row-meta">{{ getSubmissionReadinessLabel(validation()?.complet === true) }}</p>
+            </div>
+          </div>
+
+          @if (validation(); as currentValidation) {
+            <p>
+              <strong>Dossier complet :</strong>
+              {{ currentValidation.complet ? 'Oui' : 'Non' }}
+            </p>
+
+            @if (currentValidation.erreurs.length > 0) {
+              <div class="validation-block error-list">
+                <p class="subheading">Erreurs bloquantes</p>
+                <ul>
+                  @for (error of currentValidation.erreurs; track error) {
+                    <li>{{ error }}</li>
+                  }
+                </ul>
+              </div>
+            }
+
+            @if (currentValidation.avertissements.length > 0) {
+              <div class="validation-block warning-list">
+                <p class="subheading">Avertissements</p>
+                <ul>
+                  @for (warning of currentValidation.avertissements; track warning) {
+                    <li>{{ warning }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          } @else {
+            <p>Validation indisponible.</p>
+          }
+
+          <div class="inline-actions">
+            <button
+              mat-stroked-button
+              (click)="refreshValidation()"
+              [disabled]="saving()">
+              Revalider
+            </button>
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="submitDossier()"
+              [disabled]="!canSubmit()">
+              {{ getSubmitLabel() }}
+            </button>
+          </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  } @else {
+    <mat-card>
+      <mat-card-content>Dossier indisponible.</mat-card-content>
+    </mat-card>
+  }
+</section>

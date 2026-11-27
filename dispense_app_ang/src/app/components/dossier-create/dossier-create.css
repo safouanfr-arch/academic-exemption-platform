@@ -1,0 +1,25 @@
+.dossier-card {
+  max-width: 600px;
+  margin: 24px auto;
+}
+
+.full-width {
+  width: 100%;
+}
+
+mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feedback {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.error-feedback {
+  background: #fef2f2;
+  color: #b91c1c;
+}

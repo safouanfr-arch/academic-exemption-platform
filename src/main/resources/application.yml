@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: projetWebPid2526
+  main:
+    banner-mode: off
+  messages:
+    basename:
+    - messages
+    encoding: UTF-8
+  profiles:
+    active:
+     - dev
+---
+spring:
+  config:
+    activate:
+      on-profile:
+      - testU
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  sql:
+    init:
+      mode: never
+      encoding: UTF-8
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${PID_ISSUER_URI:http://localhost:8084/realms/DISP}
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+
+---
+spring:
+  config:
+    activate:
+      on-profile:
+      - dev
+  datasource:
+    url: jdbc:h2:file:./data/pid
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      platform: h2
+      data-locations:
+      - classpath:dev-h2-schema-fixes.sql
+      - classpath:data-h2.sql
+      - classpath:correspondances-seed.sql
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+  h2:
+    console:
+      enabled: true
+      path: /h2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${PID_ISSUER_URI:http://localhost:8084/realms/DISP}
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+
+server:
+  address: 127.0.0.1
+  port: 9090
+management:
+  endpoints:
+    web:
+      base-path: /actuator # defaut /actuator
+      exposure:
+        include:
+        - health
+        - info
+  info:
+    java:
+      enabled: true
+    os:
+      enabled: true
+    process:
+      enabled: true
+info:
+  app:
+    name: projetWebPid2526
+    version: 0.0.1
+    description: gestion des dispenses

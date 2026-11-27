@@ -1,0 +1,153 @@
+@startuml
+' Diagramme d'activite - Gerer le contenu d'un dossier de dispense
+' Version concise et alignee sur le workspace actuel
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+  DiamondBackgroundColor #F7FBFF
+  DiamondBorderColor #3A7BD5
+  StartColor #1B1B1F
+  EndColor #1B1B1F
+}
+skinparam note {
+  BackgroundColor #FFF6D7
+  BorderColor #D9B44A
+  FontColor #1B1B1F
+}
+skinparam partition {
+  BackgroundColor #EEF7FF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+}
+
+title Diagramme d'activite - Gerer le contenu d'un dossier de dispense
+
+start
+
+partition "Etudiant" {
+  :Ouvrir un dossier existant depuis le tableau de bord;
+}
+
+partition "Systeme" {
+  :Charger le dossier depuis les dossiers de l'etudiant;
+
+  if (Dossier accessible ?) then (Oui)
+    :Afficher les informations generales du dossier;
+    note right
+      Identifiant, objet, date,
+      etat, section, message metier.
+    end note
+  else (Non)
+    #LightCoral:Dossier introuvable ou inaccessible;
+    stop
+  endif
+
+  if (Dossier editable ?) then (Oui)
+    :Afficher le workspace en mode edition;
+  else (Non)
+    :Afficher le dossier en lecture seule;
+    stop
+  endif
+}
+
+partition "Etudiant" {
+  :Choisir une section;
+}
+
+partition "Systeme" {
+  :Enregistrer la section du dossier;
+  :Charger les UE de cette section;
+}
+
+partition "Etudiant" {
+  :Ajouter un cours reussi;
+}
+
+partition "Systeme" {
+  if (Cours connu dans la base ?) then (Oui)
+    :Reprendre automatiquement code, nom et ECTS;
+    :Enregistrer le cours avec la note /20;
+  else (Non)
+    :Exiger code, nom, ECTS, note /20, UE associee;
+    :Exiger une URL ou un PDF de programme;
+    :Enregistrer le cours en saisie libre;
+    :Creer ou reutiliser la demande UE associee;
+    :Lier le cours a cette demande UE;
+  endif
+}
+
+partition "Systeme" {
+  :Afficher les correspondances connues applicables;
+  note right
+    Filtre par section,
+    etablissement et cours requis.
+  end note
+}
+
+partition "Etudiant" {
+  :Synchroniser les dispenses connues si necessaire;
+}
+
+partition "Systeme" {
+  :Creer ou reutiliser les demandes UE reconnues;
+  :Lier les cours attendus aux demandes UE;
+}
+
+partition "Etudiant" {
+  :Completer manuellement les demandes UE restantes;
+  :Lier les cours justificatifs aux demandes;
+}
+
+partition "Systeme" {
+  if (Cours deja utilise ailleurs ?) then (Oui)
+    #LightCoral:Refuser la liaison abusive du meme cours;
+  else (Non)
+    :Enregistrer les liaisons cours - demandes UE;
+  endif
+}
+
+partition "Etudiant" {
+  :Ajouter les documents justificatifs;
+}
+
+partition "Systeme" {
+  if (Mode upload ?) then (Oui)
+    :Stocker le fichier dans le repertoire du dossier;
+    :Enregistrer le chemin en base;
+  else (Reference)
+    :Enregistrer l'URL ou le chemin de reference;
+  endif
+}
+
+partition "Etudiant" {
+  :Revalider le dossier;
+}
+
+partition "Systeme" {
+  :Recharger les donnees du dossier;
+  :Verifier section, demandes UE, cours lies et documents requis;
+
+  if (Dossier complet ?) then (Oui)
+    :Autoriser la soumission;
+  else (Non)
+    #FFF2B2:Afficher erreurs bloquantes et avertissements;
+  endif
+}
+
+partition "Etudiant" {
+  :Poursuivre les corrections ou soumettre le dossier;
+}
+
+stop
+
+legend right
+  |= Couleur |= Signification |
+  | Rouge | Erreur metier bloquante |
+  | Jaune | Dossier incomplet / avertissement |
+  | Blanc | Action normale |
+endlegend
+
+@enduml

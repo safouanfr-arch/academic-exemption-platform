@@ -1,0 +1,143 @@
+@startuml
+' Diagramme d'activite - Suivre l'etat de ses dossiers de dispense
+' Version alignee sur le comportement actuel du dashboard et du workspace
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+  DiamondBackgroundColor #F7FBFF
+  DiamondBorderColor #3A7BD5
+  StartColor #1B1B1F
+  EndColor #1B1B1F
+}
+skinparam note {
+  BackgroundColor #FFF6D7
+  BorderColor #D9B44A
+  FontColor #1B1B1F
+}
+skinparam partition {
+  BackgroundColor #EEF7FF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+}
+
+title Diagramme d'activite - Suivre l'etat de ses dossiers de dispense
+
+start
+
+partition "Etudiant" {
+  :Acceder au tableau de bord;
+}
+
+partition "Systeme" {
+  :Verifier si l'utilisateur est authentifie;
+
+  if (Utilisateur authentifie ?) then (Non)
+    :Afficher une page publique;
+    note right
+      Logo ISFCE
+      Message d'accueil
+      Bouton de connexion Keycloak
+      Aucune donnee metier affichee
+    end note
+    stop
+  else (Oui)
+    :Afficher le tableau de bord etudiant;
+    :Charger le profil, la liste des dossiers et l'eventuel dossier actif;
+  endif
+
+  if (Au moins un dossier ?) then (Oui)
+    :Afficher le dossier actif eventuel et la liste des dossiers;
+  else (Non)
+    #FFF2B2:Afficher une liste vide;
+    note right
+      Aucun dossier disponible.
+    end note
+  endif
+}
+
+partition "Etudiant" {
+  :Choisir un filtre : tous, non clotures ou clotures;
+}
+
+partition "Systeme" {
+  :Appliquer le filtre selectionne;
+
+  if (Resultat du filtre ?) then (Oui)
+    :Mettre a jour la liste affichee;
+  else (Non)
+    #FFF2B2:Afficher une liste vide pour ce filtre;
+  endif
+}
+
+partition "Etudiant" {
+  :Selectionner un dossier ou ouvrir le dossier actif;
+}
+
+partition "Systeme" {
+  :Verifier que le dossier appartient a l'etudiant;
+
+  if (Dossier accessible ?) then (Oui)
+    :Charger le contenu utile du dossier;
+    note right
+      Cours reussis
+      Demandes UE
+      Documents
+      Validation
+      Correspondances connues
+    end note
+    :Afficher les informations generales du dossier;
+  else (Non)
+    #LightCoral:Dossier introuvable ou inaccessible;
+    stop
+  endif
+}
+
+partition "Etudiant" {
+  :Consulter l'etat du dossier;
+}
+
+partition "Systeme" {
+  if (Etat editable ?) then (Oui)
+    :Permettre la modification;
+    note right
+      Etats editables :
+      DEMANDE_EN_COURS
+      ATTENTE_COMPLEMENT
+    end note
+
+    if (Etat = ATTENTE_COMPLEMENT ?) then (Oui)
+      :Afficher les erreurs et avertissements de validation;
+      note right
+        L'etudiant peut completer
+        les elements manquants.
+      end note
+    endif
+  else (Non)
+    :Afficher le dossier en lecture seule;
+    note right
+      Etats non editables :
+      TRAITEMENT_DIRECTION
+      TRAITEMENT_PROFESSEUR
+      TRAITE
+      CLOTURE
+    end note
+  endif
+}
+
+partition "Etudiant" {
+  :Revenir au tableau de bord ou ouvrir un autre dossier;
+}
+
+stop
+
+legend right
+  |= Couleur |= Signification |
+  | Rouge | Erreur technique ou acces refuse |
+  | Jaune | Liste vide / avertissement |
+  | Blanc | Action normale |
+endlegend
+
+@enduml

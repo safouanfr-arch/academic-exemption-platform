@@ -1,0 +1,25 @@
+<div class="section">
+  <header>
+    <h1>Mon profil</h1>
+  </header>
+
+  <main>
+    <section class="profile-card">
+      @if (profileLoading()) {
+        <p>Chargement du profil...</p>
+      } @else if (appUser(); as currentUser) {
+        <h2>Informations personnelles</h2>
+        <p><strong>Username :</strong> {{ currentUser.username }}</p>
+        <p><strong>Prenom :</strong> {{ currentUser.prenom }}</p>
+        <p><strong>Nom :</strong> {{ currentUser.nom }}</p>
+        <p><strong>Email :</strong> {{ currentUser.email }}</p>
+      } @else {
+        <p>Le profil n'a pas encore pu etre charge.</p>
+      }
+
+      @if (profileError()) {
+        <p><strong>Erreur :</strong> {{ profileError() }}</p>
+      }
+    </section>
+  </main>
+</div>

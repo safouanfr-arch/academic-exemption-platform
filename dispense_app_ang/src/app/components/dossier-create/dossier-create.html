@@ -1,0 +1,46 @@
+<mat-card class="dossier-card">
+  <mat-card-title>
+    <mat-icon>folder_open</mat-icon>
+    Creation d'un nouveau dossier de dispense
+  </mat-card-title>
+
+  <mat-card-content>
+    @if (errorMessage()) {
+      <p class="feedback error-feedback">{{ errorMessage() }}</p>
+    }
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Date de creation du dossier</mat-label>
+      <input
+        matInput
+        [value]="dateCreation | date:'dd/MM/yyyy'"
+        disabled />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Objet de la demande</mat-label>
+      <textarea
+        matInput
+        rows="6"
+        [value]="objetDemande()"
+        (input)="updateRequestSubject($any($event.target).value)"
+        placeholder="Decrivez votre demande..."></textarea>
+      @if (!canCreateDossier() && objetDemande().length > 0) {
+        <mat-error>
+          Le texte doit detailler l'objet de votre demande
+        </mat-error>
+      }
+    </mat-form-field>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-raised-button
+      color="primary"
+      [disabled]="!canCreateDossier() || saving()"
+      (click)="createDossier()">
+      <mat-icon>add</mat-icon>
+      Creer le dossier
+    </button>
+  </mat-card-actions>
+</mat-card>

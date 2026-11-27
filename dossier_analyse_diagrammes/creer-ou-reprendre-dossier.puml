@@ -1,0 +1,181 @@
+@startuml
+' Diagramme d'activite - Creer ou reprendre un dossier de dispense
+' Version alignee sur le code actuel
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+  DiamondBackgroundColor #F7FBFF
+  DiamondBorderColor #3A7BD5
+  StartColor #1B1B1F
+  EndColor #1B1B1F
+}
+skinparam note {
+  BackgroundColor #FFF6D7
+  BorderColor #D9B44A
+  FontColor #1B1B1F
+}
+skinparam partition {
+  BackgroundColor #EEF7FF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+}
+
+title Diagramme d'activite - Creer ou reprendre un dossier de dispense
+
+start
+
+partition "Etudiant" {
+  :Acceder a l'espace etudiant de l'application;
+}
+
+partition "Systeme" {
+  :Verifier si l'utilisateur est authentifie;
+
+  if (Utilisateur authentifie ?) then (Non)
+    :Afficher la page publique d'accueil;
+    note right
+      Les informations metier restent masquees.
+      Seul le bouton de connexion Keycloak est visible.
+    end note
+
+    partition "Etudiant" {
+      :Cliquer sur "Se connecter avec Keycloak";
+    }
+
+    partition "Systeme" {
+      :Rediriger vers Keycloak;
+      stop
+    }
+  else (Oui)
+    :Afficher le tableau de bord etudiant;
+  endif
+
+  :Charger les informations utiles du tableau de bord;
+  note right
+    Profil etudiant
+    Liste des dossiers
+    Eventuel dossier actif non cloture
+  end note
+
+  :Verifier s'il existe un dossier non cloture;
+}
+
+if (Dossier non cloture existant ?) then (Oui)
+  partition "Systeme" {
+    :Desactiver la creation d'un nouveau dossier;
+    :Afficher le dossier actif dans le tableau de bord;
+    note right
+      5A1 / 5A2
+    end note
+  }
+
+  partition "Etudiant" {
+    :Choisir de reprendre le dossier existant;
+  }
+
+  partition "Systeme" {
+    :Ouvrir le dossier selectionne;
+    :Permettre la consultation ou la modification selon son etat;
+    note right
+      Modifiable seulement si
+      DEMANDE_EN_COURS ou ATTENTE_COMPLEMENT.
+    end note
+  }
+
+  stop
+else (Non)
+  partition "Systeme" {
+    :Rendre disponible l'action "Commencer un dossier";
+  }
+endif
+
+partition "Etudiant" {
+  :Choisir de commencer un nouveau dossier;
+}
+
+partition "Systeme" {
+  :Verifier l'acces a la route protegee de creation;
+
+  if (Role ETUDIANT present ?) then (Oui)
+    :Afficher le formulaire de creation;
+    :Proposer la date du jour et le champ "objet de demande";
+  else (Non)
+    #LightCoral:Refuser l'acces;
+    :Rediriger vers la page d'acces refuse;
+    note right
+      2B1 / 2B2
+    end note
+    stop
+  endif
+}
+
+repeat
+  partition "Etudiant" {
+    :Saisir l'objet de la demande;
+  }
+
+  partition "Systeme" {
+    :Controler la saisie cote interface;
+
+    if (Objet >= 10 caracteres ?) then (Oui)
+      :Autoriser l'envoi du formulaire;
+    else (Non)
+      #FFF2B2:Signaler l'erreur de saisie;
+      :Bloquer le bouton de creation;
+      note right
+        9A1 / 9A2
+      end note
+    endif
+  }
+repeat while (Objet invalide ?) is (Oui)
+
+partition "Etudiant" {
+  :Confirmer la creation du dossier;
+}
+
+partition "Systeme" {
+  :Transmettre la demande de creation au backend;
+
+  if (Donnees minimales valides ?) then (Oui)
+    if (Aucun autre dossier actif ?) then (Oui)
+      :Creer un dossier rattache a l'etudiant authentifie;
+      :Initialiser l'etat a DEMANDE_EN_COURS;
+      note right
+        La section n'est pas obligatoire
+        au moment de la creation.
+      end note
+      :Rediriger vers la page de detail du dossier cree;
+      :Afficher le dossier pour qu'il soit complete;
+      stop
+    else (Non)
+      #LightCoral:Refuser la creation d'un second dossier actif;
+      :Renvoyer une erreur metier;
+      :Afficher l'erreur backend;
+      :Conserver l'etudiant sur le formulaire;
+      note right
+        11A3 / 11A4
+      end note
+      stop
+    endif
+  else (Non)
+    #LightCoral:Refuser la creation du dossier;
+    :Afficher l'erreur retournee par le backend;
+    :Conserver l'etudiant sur le formulaire;
+    note right
+      11A1 / 11A2
+    end note
+    stop
+  endif
+}
+
+legend right
+  |= Couleur |= Signification |
+  | Rouge | Erreur technique ou metier |
+  | Jaune | Erreur de saisie / avertissement |
+  | Blanc | Action normale |
+endlegend
+
+@enduml

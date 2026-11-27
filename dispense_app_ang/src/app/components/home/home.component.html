@@ -1,0 +1,158 @@
+<section class="dashboard">
+  @if (!authenticated()) {
+    <section class="guest-hero">
+      <div class="guest-brand">
+        <img class="hero-logo" src="assets/isfce-logo.png" alt="Logo ISFCE">
+        <p class="eyebrow">Portail officiel</p>
+        <h1>Demandes de dispense</h1>
+        <p class="subtitle">
+          Accede a ton espace etudiant pour preparer une demande claire, joindre tes justificatifs et suivre l'avancement de ton dossier.
+        </p>
+      </div>
+
+      <mat-card class="guest-card">
+        <mat-card-content>
+          <p class="guest-card-title">Acces etudiant securise</p>
+          <p class="guest-card-copy">
+            Les dossiers, informations personnelles et actions metier restent masques tant que tu n'es pas authentifie.
+          </p>
+          <button mat-flat-button color="primary" (click)="login()">
+            <mat-icon>login</mat-icon>
+            Se connecter avec Keycloak
+          </button>
+        </mat-card-content>
+      </mat-card>
+    </section>
+  } @else {
+    <div class="dashboard-header">
+      <div>
+        <p class="eyebrow">Espace etudiant ISFCE</p>
+        <h1>Mes dossiers de dispense</h1>
+        <p class="subtitle">
+          Retrouve ton dossier actif, consulte l'historique de tes demandes et prepare une nouvelle introduction.
+        </p>
+      </div>
+
+      <div class="header-actions">
+        <a mat-stroked-button routerLink="/ues">
+          <mat-icon>menu_book</mat-icon>
+          Consulter les UE
+        </a>
+        @if (hasOpenDossier()) {
+          <button mat-flat-button color="primary" disabled>
+            <mat-icon>add_circle</mat-icon>
+            Nouveau dossier indisponible
+          </button>
+        } @else {
+          <a mat-flat-button color="primary" routerLink="/createDossier">
+            <mat-icon>add_circle</mat-icon>
+            Commencer un dossier
+          </a>
+        }
+      </div>
+    </div>
+
+    @if (hasOpenDossier()) {
+      <p class="info-text">
+        Un dossier non cloture existe deja. Tu peux ouvrir le dossier actif ou consulter la liste.
+      </p>
+    }
+
+    <div class="dashboard-grid">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Profil etudiant</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (appUserLoading()) {
+            <p>Chargement du profil etudiant...</p>
+          } @else if (appUser(); as user) {
+            <p><strong>Nom :</strong> {{ user.prenom }} {{ user.nom }}</p>
+            <p><strong>Email :</strong> {{ user.email }}</p>
+            <p><strong>Identifiant :</strong> {{ getCurrentUsername() || 'Inconnu' }}</p>
+          } @else {
+            <p>Le profil etudiant n'a pas encore pu etre charge.</p>
+          }
+
+          @if (appUserError()) {
+            <p class="error-text">{{ appUserError() }}</p>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>Dossier actif</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (loading()) {
+            <p>Chargement du dossier actif...</p>
+        } @else if (activeDossier(); as dossier) {
+            <p><strong>Objet :</strong> {{ dossier.objetDemande }}</p>
+            <p><strong>Etat :</strong> {{ etatLabels[dossier.etat] || dossier.etat }}</p>
+            <p><strong>Date :</strong> {{ dossier.date | date:'dd/MM/yyyy' }}</p>
+            <p><strong>Section :</strong> {{ dossier.section?.nom || 'Non choisie' }}</p>
+
+            <div class="card-actions">
+              <a mat-stroked-button [routerLink]="['/dossier', dossier.id]">
+                Ouvrir le dossier
+              </a>
+            </div>
+          } @else {
+            <p>Aucun dossier actif pour le moment.</p>
+            <p>Tu peux consulter les UE ou commencer une nouvelle demande.</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="full-width-card">
+      <mat-card-header>
+        <mat-card-title>{{ getListTitle() }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="filter-actions">
+          <a mat-stroked-button routerLink="/home">
+            Tous
+          </a>
+          <a mat-stroked-button routerLink="/home" [queryParams]="{ filter: 'open' }">
+            Non clotures
+          </a>
+          <a mat-stroked-button routerLink="/home" [queryParams]="{ filter: 'closed' }">
+            Clotures
+          </a>
+        </div>
+
+        @if (loading()) {
+          <p>Chargement de la liste...</p>
+        } @else if (visibleDossiers().length === 0) {
+          <p>{{ getEmptyListMessage() }}</p>
+        } @else {
+          <div class="dossier-list">
+            @for (dossier of visibleDossiers(); track dossier.id) {
+              <div class="dossier-row">
+                <div>
+                  <p class="dossier-title">{{ dossier.objetDemande }}</p>
+                  <p class="dossier-meta">
+                    Dossier #{{ dossier.id }} - {{ dossier.date | date:'dd/MM/yyyy' }}
+                  </p>
+                </div>
+                <div class="dossier-side">
+                  <span class="status-chip">{{ etatLabels[dossier.etat] || dossier.etat }}</span>
+                  <span class="section-chip">{{ dossier.section?.code || 'Sans section' }}</span>
+                  <a mat-stroked-button [routerLink]="['/dossier', dossier.id]">
+                    Ouvrir
+                  </a>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (errorMessage()) {
+          <p class="error-text">{{ errorMessage() }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

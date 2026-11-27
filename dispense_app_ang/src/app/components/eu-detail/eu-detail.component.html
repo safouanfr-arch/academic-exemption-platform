@@ -1,0 +1,28 @@
+@if (ue) {
+  <mat-card>
+    <mat-card-title>{{ ue.nom }}</mat-card-title>
+    <mat-card-content>
+      <p><strong>Code :</strong> {{ ue.code }}</p>
+      <p><strong>Reference :</strong> {{ ue.ref }}</p>
+      <p><strong>Credits :</strong> {{ ue.ects }} ECTS</p>
+      <p><strong>Periodes :</strong> {{ ue.nbPeriodes }}</p>
+
+      <p><strong>Description :</strong></p>
+      <p class="ue-description">{{ ue.prgm }}</p>
+
+      @if (ue.acquis.length > 0) {
+        <div class="acquis-block">
+          <p><strong>Acquis d'apprentissage :</strong></p>
+          <ul class="acquis-list">
+            @for (acquis of ue.acquis; track acquis.num) {
+              <li>
+                <span class="acquis-title">Acquis {{ acquis.num }} ({{ acquis.pourcentage }}%)</span>
+                <span class="acquis-text">{{ acquis.acquis }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+}

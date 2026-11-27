@@ -1,0 +1,26 @@
+.ue-description {
+  white-space: pre-line;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.acquis-block {
+  margin-top: 1.5rem;
+}
+
+.acquis-list {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.acquis-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.acquis-text {
+  display: block;
+  line-height: 1.5;
+}

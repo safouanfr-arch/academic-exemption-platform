@@ -1,0 +1,47 @@
+<mat-sidenav-container class="section-layout">
+  <mat-sidenav
+    mode="side"
+    opened
+    class="ue-list-sidenav">
+    <mat-nav-list>
+      @for (section of sections; track section.code) {
+        <mat-list-item
+          (click)="showSection(section)"
+          [activated]="section === activeSection"
+          class="section-item">
+          {{ section.nom }}
+        </mat-list-item>
+      }
+    </mat-nav-list>
+
+    <mat-divider></mat-divider>
+    @if (sectionUes.length === 0) {
+      <p class="ue-empty">Aucun cours disponible</p>
+    } @else {
+      <mat-list class="ue-list-dense">
+        @for (ue of sectionUes; track ue.code) {
+          <mat-list-item
+            (click)="showUeDetail(ue)"
+            [activated]="ue.code === selectedUeDetail?.code"
+            class="ue-item">
+            <mat-icon>folder</mat-icon> {{ ue.nom }}
+          </mat-list-item>
+        }
+      </mat-list>
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content class="ue-detail-content">
+    @if (loadingUeDetail) {
+      <p class="placeholder">Chargement des details de l'UE...</p>
+    } @else if (ueDetailErrorMessage) {
+      <p class="placeholder">{{ ueDetailErrorMessage }}</p>
+    } @else if (selectedUeDetail) {
+      <app-eu-detail [ue]="selectedUeDetail"></app-eu-detail>
+    } @else {
+      <p class="placeholder">
+        Selectionnez une UE pour voir sa description et ses acquis.
+      </p>
+    }
+  </mat-sidenav-content>
+</mat-sidenav-container>

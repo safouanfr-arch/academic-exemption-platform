@@ -1,0 +1,124 @@
+@startuml
+' Diagramme d'activite - Soumettre ou resoumettre un dossier de dispense
+' Version alignee sur le code actuel : meme endpoint pour soumission et resoumission
+
+skinparam backgroundColor #FFFFFF
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+  DiamondBackgroundColor #F7FBFF
+  DiamondBorderColor #3A7BD5
+  StartColor #1B1B1F
+  EndColor #1B1B1F
+}
+skinparam note {
+  BackgroundColor #FFF6D7
+  BorderColor #D9B44A
+  FontColor #1B1B1F
+}
+skinparam partition {
+  BackgroundColor #EEF7FF
+  BorderColor #3A7BD5
+  FontColor #1B1B1F
+}
+
+title Diagramme d'activite - Soumettre ou resoumettre un dossier de dispense
+
+start
+
+partition "Etudiant" {
+  :Ouvrir un dossier complete;
+}
+
+partition "Systeme" {
+  :Charger le dossier et verifier qu'il appartient a l'etudiant;
+
+  if (Dossier accessible ?) then (Oui)
+    :Afficher le bloc de validation;
+    note right
+      Etat de completude
+      Erreurs bloquantes
+      Avertissements
+    end note
+  else (Non)
+    #LightCoral:Dossier introuvable ou inaccessible;
+    stop
+  endif
+
+  :Determiner si l'envoi est autorise;
+  note right
+    Etat autorise :
+    DEMANDE_EN_COURS ou ATTENTE_COMPLEMENT.
+
+    Le bouton est actif seulement si
+    validation.complet = true.
+  end note
+}
+
+partition "Etudiant" {
+  :Lancer une revalidation;
+}
+
+partition "Systeme" {
+  :Recharger le contenu utile du dossier;
+  :Verifier la coherence metier;
+  note right
+    Section
+    Au moins une demande UE
+    Cours lies aux demandes
+    Lettre de motivation
+    Bulletin
+    Support pedagogique par cours
+    Notes sur 20 entre 10 et 20
+  end note
+
+  if (Erreurs bloquantes ?) then (Oui)
+    #FFF2B2:Afficher les erreurs et bloquer l'envoi;
+    note right
+      Exemples :
+      section absente,
+      aucune demande UE,
+      cours non lie,
+      document manquant,
+      note invalide,
+      cours reutilise.
+    end note
+    stop
+  else (Non)
+    :Afficher les avertissements eventuels;
+    note right
+      Les avertissements ECTS
+      n'empechent pas l'envoi.
+    end note
+  endif
+}
+
+partition "Etudiant" {
+  :Cliquer sur "Soumettre" ou "Resoumettre";
+}
+
+partition "Systeme" {
+  :Reverifier l'etat et la completude cote backend;
+
+  if (Etat autorise et dossier complet ?) then (Oui)
+    :Enregistrer l'envoi du dossier;
+    :Passer l'etat a TRAITEMENT_DIRECTION;
+    :Afficher "Dossier soumis" ou "Dossier resoumis";
+  else (Non)
+    #LightCoral:Refuser l'envoi;
+    :Conserver l'etat courant du dossier;
+    :Afficher l'erreur retournee par le backend;
+  endif
+}
+
+stop
+
+legend right
+  |= Couleur |= Signification |
+  | Rouge | Erreur technique ou metier |
+  | Jaune | Dossier incomplet / avertissement |
+  | Blanc | Action normale |
+endlegend
+
+@enduml
