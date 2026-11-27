@@ -52,7 +52,10 @@
       "email": "et1@example.test",
       "emailVerified": true,
       "enabled": true,
-      "realmRoles": ["ETUDIANT"]
+      "realmRoles": ["ETUDIANT"],
+      "clientRoles": {
+        "account": ["view-profile"]
+      }
     },
     {
       "username": "et2",
@@ -61,7 +64,10 @@
       "email": "et2@example.test",
       "emailVerified": true,
       "enabled": true,
-      "realmRoles": ["ETUDIANT"]
+      "realmRoles": ["ETUDIANT"],
+      "clientRoles": {
+        "account": ["view-profile"]
+      }
     }
   ]
 }
