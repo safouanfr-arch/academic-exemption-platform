@@ -1,5 +1,7 @@
 # Academic Exemption Management
 
+[![CI](https://github.com/safouanfr-arch/academic-exemption-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/safouanfr-arch/academic-exemption-platform/actions/workflows/ci.yml)
+
 ISFCE academic project for requesting exemptions based on previously completed coursework. Students can reopen a draft, link prior courses to teaching units, attach supporting documents, validate a dossier, and submit it for review.
 
 ## What the application covers
