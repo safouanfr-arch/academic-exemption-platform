@@ -54,6 +54,8 @@ npm run build
 
 The component and backend test suites can run without a live Keycloak server.
 
+The IAM review describes the sign-in flow, current permissions, document storage and proposed deployment controls. [IAM review](docs/iam-review.md)
+
 ## Academic context
 
 This portfolio snapshot comes from Safouan Tassi's submitted ISFCE branch `safouan-processus1` at commit `b09a509`. The project extends the PID2526 course starter. This export includes source code, tests and analysis diagrams, with fictional identities in the test data and local-only development configuration.
