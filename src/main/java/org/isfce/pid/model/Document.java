@@ -52,6 +52,10 @@ public class Document {
     @Column(length = 500)
     private String cheminFichier;
 
+    // Opaque filename assigned only to files stored by the server.
+    @Column(length = 36)
+    private String cleStockage;
+
     @Setter
     @Column(length = 500)
     private String urlDocument;

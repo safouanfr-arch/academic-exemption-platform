@@ -434,8 +434,13 @@ public class DossierController {
 	private DocumentResponse versReponseDocument(Document document) {
 		Long idCoursLie = document.getCoursReussi() != null ? document.getCoursReussi().getId() : null;
 
+		String reference = document.getCheminFichier();
+		if (reference != null && (reference.startsWith("/") || reference.startsWith("\\")
+				|| reference.matches("(?i)^[a-z]:.*"))) {
+			reference = null;
+		}
 		return new DocumentResponse(document.getId(), document.getNomFichier(), document.getTypeDocument(),
-				document.getCheminFichier(), document.getUrlDocument(), idCoursLie);
+				reference, document.getUrlDocument(), idCoursLie);
 	}
 
 	private CorrespondanceConnueResponse versReponseCorrespondanceConnue(

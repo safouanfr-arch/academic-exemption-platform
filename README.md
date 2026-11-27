@@ -24,6 +24,8 @@ The Spring Boot backend enforces the dossier rules and stores links and document
 
 Requirements are Java 21, Node.js 24 with npm, and a local Keycloak server for browser sign-in.
 
+The reproducible Keycloak setup includes the sample accounts, PKCE and the API audience mapper. Existing realms should apply the equivalent settings before using the API. [Keycloak demo configuration](keycloak/README.md)
+
 1. Run Keycloak at `http://localhost:8084`. Create a realm named `DISP` and a public OpenID Connect client named `etu-app`. Enable the standard flow and authorize `http://localhost:4200/*` as a redirect URI and `http://localhost:4200` as a web origin.
 2. Create a realm role named `ETUDIANT` and assign it to a demo account named `et1`. Set fictional given and family names and an email so Keycloak emits the corresponding profile claims. The API reads the username from `preferred_username` and the student role from `realm_access.roles`.
 3. Start the API and the Angular development server in separate terminals.

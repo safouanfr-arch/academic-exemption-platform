@@ -1,0 +1,11 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm", "--hostname=http://localhost:8084"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: demo-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${PID_KEYCLOAK_ADMIN_PASSWORD:?Set a local demo admin password}
+    ports:
+      - "127.0.0.1:8084:8080"
+    volumes:
+      - ./DISP-realm.json:/opt/keycloak/data/import/DISP-realm.json:ro

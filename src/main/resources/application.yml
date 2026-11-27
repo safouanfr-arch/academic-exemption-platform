@@ -10,6 +10,10 @@ spring:
   profiles:
     active:
      - dev
+pid:
+  security:
+    audience: ${PID_API_AUDIENCE:dispense-api}
+    allowed-origins: ${PID_ALLOWED_ORIGINS:}
 ---
 spring:
   config:
@@ -64,6 +68,10 @@ spring:
         jwt:
           issuer-uri: ${PID_ISSUER_URI:http://localhost:8084/realms/DISP}
           jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+
+pid:
+  security:
+    allowed-origins: ${PID_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
 
 server:
   address: 127.0.0.1
